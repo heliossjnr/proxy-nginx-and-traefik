@@ -1,0 +1,117 @@
+===============================================================================
+  COMMIT INICIAL — PROXY REVERSO COM NGINX + DOCKER
+===============================================================================
+
+Commit Hash  : 4809afca8a0cb2cc7840bb922c0c905de219d4b9
+Branch       : main
+Autor        : Helio Junior <helio_ss_junior@hotmail.com>
+Data         : Wed Jul 22 23:03:19 2026 -0300
+Mensagem     : feat: configura proxy reverso com NGINX + Docker para 3 projetos
+
+Arquivos incluídos (12 arquivos, 326 linhas):
+  - README.md
+  - nginx/nginx-proxy/docker-compose.yml
+  - nginx/nginx-proxy/nginx.conf
+  - nginx/projeto1/docker-compose.yml
+  - nginx/projeto1/html/index.html
+  - nginx/projeto1/nginx/nginx.conf
+  - nginx/projeto2/docker-compose.yml
+  - nginx/projeto2/html/index.html
+  - nginx/projeto2/nginx/nginx.conf
+  - nginx/projeto3/docker-compose.yml
+  - nginx/projeto3/html/index.html
+  - nginx/projeto3/nginx/nginx.conf
+
+===============================================================================
+  COMPORTAMENTO DO NGINX COMO PROXY REVERSO
+===============================================================================
+
+1. VISÃO GERAL
+   O NGINX atua como ponto único de entrada (porta 80 e 443) recebendo todas
+   as requisições HTTP da internet e encaminhando-as para os containers
+   internos (projeto1, projeto2, projeto3) com base no cabeçalho "Host".
+
+2. FLUXO DE UMA REQUISIÇÃO
+
+   Cliente                  nginx-proxy                Container interno
+      │                          │                           │
+      │  GET / HTTP/1.1         │                           │
+      │  Host: projeto1.empresa │                           │
+      │────────────────────────>│                           │
+      │                          │                           │
+      │                          │  proxy_pass:              │
+      │                          │  analisa "server_name"    │
+      │                          │  decide: projeto1         │
+      │                          │                           │
+      │                          │  GET / HTTP/1.1           │
+      │                          │  Host: projeto1.empresa   │
+      │                          │──────────────────────────>│
+      │                          │                           │
+      │                          │      200 OK               │
+      │                          │      <h1>PROJETO1</h1>    │
+      │                          │<──────────────────────────│
+      │                          │                           │
+      │  200 OK                  │                           │
+      │  <h1>PROJETO1</h1>       │                           │
+      │<─────────────────────────│                           │
+
+3. DIRETIVAS NGINX E SUAS FUNÇÕES
+
+   ┌────────────────┬──────────────────────────────────────────────────┐
+   │ Diretiva       │ Comportamento                                    │
+   ├────────────────┼──────────────────────────────────────────────────┤
+   │ listen 80      │ NGINX escuta na porta 80 (HTTP)                  │
+   │ server_name    │ Filtra requisições pelo domínio (Host header)    │
+   │ proxy_pass     │ Encaminha a requisição para o backend            │
+   │ resolver       │ Usa DNS interno do Docker (127.0.0.11) para      │
+   │                │ resolver nomes de containers → IPs               │
+   │ set $upstream  │ Define variável com o nome do container alvo     │
+   └────────────────┴──────────────────────────────────────────────────┘
+
+4. ROTEAMENTO POR server_name
+
+   ┌──────────────────────┬─────────────────┬────────────────┐
+   │ Domínio              │ Container alvo  │ Conteúdo       │
+   ├──────────────────────┼─────────────────┼────────────────┤
+   │ projeto1.empresa     │ projeto1:80     │ <h1>PROJETO1   │
+   │ projeto2.empresa     │ projeto2:80     │ PROJETO2       │
+   │ projeto3.empresa     │ projeto3:80     │ PROJETO3       │
+   └──────────────────────┴─────────────────┴────────────────┘
+
+5. ISOLAMENTO DE REDE
+
+   - A rede "web-network" é uma rede Docker bridge compartilhada.
+   - O nginx-proxy cria a rede (driver: bridge, name: web-network).
+   - Cada projeto conecta-se à rede como "external: true".
+   - Os containers de projeto NÃO expõem portas para o host.
+   - Toda comunicação externa passa obrigatoriamente pelo proxy.
+
+6. RESOLUÇÃO DNS INTERNA
+
+   - Docker Embedded DNS: 127.0.0.11
+   - NGINX usa "resolver 127.0.0.11 valid=10s" para resolver nomes.
+   - Quando NGINX faz proxy_pass http://projeto1:80, o DNS interno
+     do Docker traduz "projeto1" para o IP do container.
+   - O cache DNS é invalidado a cada 10 segundos (valid=10s),
+     permitindo que containers reiniciados sejam redescobertos.
+
+7. POR QUE USAR VARIÁVEL ($upstream) NO proxy_pass?
+
+   - "proxy_pass http://projeto1:80;" (endereço fixo) resolve o DNS
+     apenas uma vez na inicialização do NGINX.
+   - "set $upstream projeto1; proxy_pass http://$upstream:80;"
+     força o NGINX a re-resolver o DNS a cada requisição (com o
+     resolver configurado), garantindo alta disponibilidade caso
+     o container seja recriado com um IP diferente.
+
+===============================================================================
+  COMO TESTAR
+===============================================================================
+
+  curl -H "Host: projeto1.empresa" http://localhost
+  curl -H "Host: projeto2.empresa" http://localhost
+  curl -H "Host: projeto3.empresa" http://localhost
+
+  # Ou adicionar ao arquivo hosts:
+  # 127.0.0.1  projeto1.empresa  projeto2.empresa  projeto3.empresa
+  # Depois acessar http://projeto1.empresa, etc. no navegador.
