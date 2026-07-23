@@ -1,0 +1,14 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: projeto2
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./html:/usr/share/nginx/html:ro
+    # SEM portas expostas! O proxy central vai acessar via rede interna
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    external: true  # Usa a rede criada pelo docker-compose principal
