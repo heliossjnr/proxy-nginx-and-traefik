@@ -274,19 +274,6 @@ hey -n 1000 -c 50 -H "Host: projeto1.empresa" http://localhost
 
 ---
 
-## 🔜 Próximos passos
-
-- [ ] Adicionar suporte a HTTPS/SSL com certificados autoassinados ou Let's Encrypt no Traefik
-- [ ] Implementar balanceamento de carga com múltiplas réplicas nos projetos
-- [ ] Adicionar health checks nos backends
-- [ ] Configurar cache e compressão gzip nos proxies
-- [ ] Reimplementar Prometheus com configuração adequada de scrape
-- [ ] Criar dashboards predefinidos no Grafana para cAdvisor e Node Exporter
-- [ ] Adicionar alertas com AlertManager
-- [ ] Comparativo de performance NGINX vs Traefik usando hey
-
----
-
 ## 📚 Referências
 
 - [NGINX Reverse Proxy Guide](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/)
