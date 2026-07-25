@@ -1,0 +1,15 @@
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"      # Porta HTTP
+  websecure:
+    address: ":443"     # Porta HTTPS (para SSL depois)
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false   # Só expõe containers com label enable=true
+    network: web-network      # <-- ESSENCIAL! Diz ao Traefik em qual rede procurar

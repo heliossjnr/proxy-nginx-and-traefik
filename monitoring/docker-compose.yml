@@ -1,0 +1,98 @@
+services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cadvisor.rule=Host(`cadvisor.empresa`)"
+      - "traefik.http.routers.cadvisor.entrypoints=web"        # <-- ESSENCIAL!
+      - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
+    networks:
+      - web-network
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.node-exporter.rule=Host(`node-exporter.empresa`)"
+      - "traefik.http.routers.node-exporter.entrypoints=web"   # <-- ESSENCIAL!
+      - "traefik.http.services.node-exporter.loadbalancer.server.port=9100"
+    networks:
+      - web-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.empresa`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"      # <-- ESSENCIAL!
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+    networks:
+      - web-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.empresa`)"
+      - "traefik.http.routers.grafana.entrypoints=web"         # <-- ESSENCIAL!
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    networks:
+      - web-network
+    restart: unless-stopped
+
+  dockhand:
+    image: fnsys/dockhand:latest
+    container_name: dockhand
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dockhand_data:/app/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dockhand.rule=Host(`dockhand.empresa`)"
+      - "traefik.http.routers.dockhand.entrypoints=web"        # <-- ESSENCIAL!
+      - "traefik.http.services.dockhand.loadbalancer.server.port=3000"
+    networks:
+      - web-network
+    restart: unless-stopped
+
+networks:
+  web-network:
+    external: true
+    name: web-network
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  dockhand_data:

@@ -1,0 +1,16 @@
+services:
+  web:
+    image: nginx:alpine
+    container_name: projeto2
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.projeto2.rule=Host(`projeto2.empresa`)"
+      - "traefik.http.services.projeto2.loadbalancer.server.port=80"
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    external: true
